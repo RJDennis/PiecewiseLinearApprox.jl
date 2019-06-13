@@ -5,7 +5,7 @@ of dimensions
 
 =#
 
-function piecewise_linear_nodes(n::S,domain = [one(T),-one(T)]) where {T <: AbstractFloat, S <: Integer}
+function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
 
     nodes = collect(range(domain[2],domain[1],length=n)) # The nodes are ordered from lowest to highest
     return nodes

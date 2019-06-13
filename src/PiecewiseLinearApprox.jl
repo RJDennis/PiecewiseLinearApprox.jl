@@ -1,5 +1,8 @@
 module PiecewiseLinearApprox
 
-greet() = print("Hello World!")
+include("piecewise_linear.jl")
+
+export piecewise_linear_nodes
+export piecewise_linear_evaluate
 
 end # module

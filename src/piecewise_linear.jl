@@ -44,3 +44,11 @@ function piecewise_linear_evaluate(y::Array{T,N},x::Union{NTuple{N,Array{T,1}},A
     end
 
 end
+
+function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1},point::T) where {T <: AbstractFloat}
+
+    y_estimate = piecewise_linear_evaluate(y,(nodes,),point)
+
+    return y_estimate
+
+end

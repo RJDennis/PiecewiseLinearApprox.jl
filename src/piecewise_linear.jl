@@ -110,9 +110,9 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   function approximating_function(point::Union{T,Array{T,1}}) where {T <: AbstractFloat}
 
-    data = piecewise_linear_evaluate(y,x,point)
+    y_hat = piecewise_linear_evaluate(y,x,point)
 
-    return data[1]
+    return y_hat
 
   end
 

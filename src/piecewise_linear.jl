@@ -155,9 +155,12 @@ end
 
 =#
 
-function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1},point::T) where {T <: AbstractFloat}
+function piecewise_linear_evaluate(y::Array{T,1},x::Array{T,1},point::T) where {T <: AbstractFloat}
 
-    y_estimate = piecewise_linear_evaluate(y,(nodes,),point)
+    b = bracket_nodes(x,point)
+    w = piecewise_linear_weight(x,point)
+
+    y_estimate = y[b[1]] + w*(y[b[2]]-y[b[1]])
 
     return y_estimate
 
@@ -167,7 +170,7 @@ function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1}) where {T <: 
 
   function approximating_function(point::T) where {T <: AbstractFloat}
 
-      return piecewise_linear_evaluate(y,(nodes,),point)
+      return piecewise_linear_evaluate(y,nodes,point)
 
   end
 

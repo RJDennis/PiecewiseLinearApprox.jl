@@ -167,7 +167,7 @@ function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1}) where {T <: 
 
   function approximating_function(point::T) where {T <: AbstractFloat}
 
-      return piecewise_linear_evaluate(y,nodes,point)
+      return piecewise_linear_evaluate(y,(nodes,),point)
 
   end
 

@@ -12,6 +12,8 @@ function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
 
 end
 
+const linear_nodes = piecewise_linear_nodes
+
 function bracket_nodes(x::Array{T,1},point::T) where {T <: AbstractFloat}
 
     if point <= x[1]
@@ -101,6 +103,20 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   end
 
    return data[1]
+
+end
+
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}}) where {T <: AbstractFloat, N}
+
+  function approximating_function(point::Union{T,Array{T,1}}) where {T <: AbstractFloat}
+
+    data = piecewise_linear_evaluate(y,x,point)
+
+    return data[1]
+
+  end
+
+  return approximating_function
 
 end
 

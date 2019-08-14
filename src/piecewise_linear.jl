@@ -177,3 +177,37 @@ function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1}) where {T <: 
   return approximating_function
 
 end
+
+@generated function grid_reshape(f::Array{T,N},grid::NTuple{N,Array{T,1}}) where {T,N}
+  
+    i_vars = Array{Symbol}(undef,N)
+    grid_vars = Array{String}(undef,N)
+    for i = 1:N
+      i_vars[i] = Symbol("i$i")
+      grid_vars[i] = "grid[$i][i$i]"
+    end
+
+    inner = :(y[$(i_vars...)] = piecewise_linear_evaluate(f,old_grid,[$(Meta.parse.(grid_vars)...)]))
+    
+    outer = inner
+
+    for i = N:-1:1
+        outer = :(
+        for $(i_vars[i]) = 1:length(grid[$i])
+            $outer
+         end
+        )
+    end
+    
+    final = :(old_grid = Array{Array{T,1},1}(undef,N);
+             for i = 1:N;
+               old_grid[i] = [range(grid[i][1],grid[i][end],length=size(f,i));];
+             end;
+             y = Array{T,N}(undef,length.(grid));
+             $outer;
+             return y
+             )
+
+    return final
+
+end

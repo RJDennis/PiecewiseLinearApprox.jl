@@ -118,6 +118,34 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
 end
 
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{T,Array{T,1}},integrals::Union{T,Array{T,1}}) where {T <: AbstractFloat, N}
+
+  # This function is only needed to facilitate compatibility with SolveDSGE
+
+  b = bracket_nodes(x,point)
+  w = piecewise_linear_weights(x,point)
+  w = w.*integrals
+
+  d = size(b,2)
+
+  relevant_points = select_bracketing_nodes(b)
+  data = select_relevant_data(y,relevant_points)
+
+  for j = d:-1:1
+
+    new_data = zeros(Int(length(data)/2))
+    for i = 1:length(new_data)
+      new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
+    end
+
+    data = copy(new_data)
+
+  end
+
+   return data[1]
+
+end
+
 #=
 
 function locate_point_below(x::Array{T,1},point::T) where {T <: AbstractFloat}

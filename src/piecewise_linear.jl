@@ -124,7 +124,6 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   b = bracket_nodes(x,point)
   w = piecewise_linear_weights(x,point)
-  w = w.*integrals
 
   d = size(b,2)
 
@@ -135,7 +134,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
     new_data = zeros(Int(length(data)/2))
     for i = 1:length(new_data)
-      new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
+      new_data[i] = data[2*(i-1)+1] + w[j]*integrals[j]*data[2*i] - w[j]*data[2*(i-1)+1]
     end
 
     data = copy(new_data)

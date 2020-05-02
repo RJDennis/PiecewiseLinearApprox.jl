@@ -28,7 +28,7 @@ end
 
 function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{T,1}) where {T <: AbstractFloat, N}
 
-    bracketing_nodes = zeros(Int64,2,length(x))
+    bracketing_nodes = Array{Int64}(undef,2,length(x))
     for i = 1:length(point)
         bracketing_nodes[:,i] .= bracket_nodes(x[i],point[i])
     end
@@ -102,7 +102,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   end
 
-   return data[1]
+  return data[1]
 
 end
 
@@ -142,7 +142,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   end
 
-   return data[1]
+  return data[1]
 
 end
 
@@ -207,7 +207,7 @@ function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1}) where {T <: 
 end
 
 @generated function grid_reshape(f::Array{T,N},grid::NTuple{N,Array{T,1}}) where {T,N}
-  
+
     i_vars = Array{Symbol}(undef,N)
     grid_vars = Array{String}(undef,N)
     for i = 1:N
@@ -216,7 +216,7 @@ end
     end
 
     inner = :(y[$(i_vars...)] = piecewise_linear_evaluate(f,old_grid,[$(Meta.parse.(grid_vars)...)]))
-    
+
     outer = inner
 
     for i = N:-1:1
@@ -226,7 +226,7 @@ end
          end
         )
     end
-    
+
     final = :(old_grid = Array{Array{T,1},1}(undef,N);
              for i = 1:N;
                old_grid[i] = [range(grid[i][1],grid[i][end],length=size(f,i));];

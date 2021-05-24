@@ -7,9 +7,19 @@ of dimensions
 
 function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
 
+  if n <= 0
+    error("The number of nodes must be positive.")
+  end
+
+  nodes = zeros(n)
+
+  if isodd(n)
+    nodes[Int((n-1)/2)+1] = (domain[1]+domain[2])/2.0
+  end
+
   if n == 1
 
-    return [(domain[1]+domain[2])/2]
+    return nodes
     
   elseif n == 2
     
@@ -17,7 +27,6 @@ function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
     
   else
     
-    nodes = zeros(n)
     nodes[1] = domain[2]
     nodes[n] = domain[1]
 

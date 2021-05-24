@@ -1,7 +1,7 @@
 name = "PiecewiseLinearApprox"
 uuid = "fcfa6960-8e2e-11e9-2cde-29dd09221fb3"
 authors = ["Richard Dennis <richard.dennis@glasgow.ac.uk>"]
-version = "0.1.2"
+version = "0.1.3"
 
 [compat]
 julia = "^1.1"

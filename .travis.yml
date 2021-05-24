@@ -1,12 +1,12 @@
 language: julia
 julia:
-  - 1.1
-  - 1.2
-  - 1.3
+  - 1.5
+  - 1.6
+  - nightly
   
 #script:
 #    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#    - julia -e 'Pkg.clone(pwd()); Pkg.test("SmolyakApprox", coverage=true)'
+#    - julia -e 'Pkg.clone(pwd()); Pkg.test("PiecewiseLinearApprox", coverage=true)'
 after_success:
   # push coverage results to Codecov
   - julia -e 'cd(Pkg.dir("PiecewiseLinearApprox")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'

@@ -10,7 +10,7 @@ using Test
 
   end
 
-  x1 = piecewise_linear_nodes(11,[3.0,1.0])
+  x1 = piecewise_linear_nodes(11,[3.0,1.5])
   x2 = piecewise_linear_nodes(21,[2.5,0.5])
 
   x = (x1,x2)

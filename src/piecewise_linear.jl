@@ -7,8 +7,29 @@ of dimensions
 
 function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
 
-    nodes = collect(range(domain[2],domain[1],length=n)) # The nodes are ordered from lowest to highest
+  if n == 1
+
+    return [(domain[1]+domain[2])/2]
+    
+  elseif n == 2
+    
+    return [domain[2], domain[1]]
+    
+  else
+    
+    nodes = zeros(n)
+    nodes[1] = domain[2]
+    nodes[n] = domain[1]
+
+    inc = (domain[1]-domain[2])/(n-1)
+    for i = 2:div(n,2)
+      nodes[i]     = domain[2] + (i-1)*inc
+      nodes[n-i+1] = domain[1] - (i-1)*inc
+    end
+
     return nodes
+    
+  end
 
 end
 
@@ -16,23 +37,33 @@ const linear_nodes = piecewise_linear_nodes
 
 function bracket_nodes(x::Array{T,1},point::T) where {T <: AbstractFloat}
 
-    if point <= x[1]
-        return (1,2)
-    elseif point >= x[end]
-        return (length(x) - 1, length(x))
-    else
-        return (sum(point .> x), sum(point .> x) + 1)
+  if point <= x[1]
+    return (1,2)
+  elseif point >= x[end]
+    return (length(x) - 1, length(x))
+  else
+    y = 0
+    for i in x
+      if i < point
+        y += 1
+      else
+        break
+      end
     end
+    return (y, y+1)
+  end
 
 end
-
+ 
 function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{T,1}) where {T <: AbstractFloat, N}
 
-    bracketing_nodes = Array{Int64}(undef,2,length(x))
-    for i = 1:length(point)
-        bracketing_nodes[:,i] .= bracket_nodes(x[i],point[i])
-    end
-    return bracketing_nodes
+  bracketing_nodes = Array{Int64,2}(undef,2,length(point))
+  for i = 1:length(point)
+    bracketing_nodes[:,i] .= bracket_nodes(x[i],point[i])
+  end
+
+  return bracketing_nodes
+
 end
 
 function piecewise_linear_weight(x::Array{T,1},point::T) where {T <: AbstractFloat}
@@ -46,7 +77,7 @@ end
 
 function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{T,1}) where {T <: AbstractFloat, N}
 
-    weights = Array{T}(undef,length(point))
+    weights = Array{T,1}(undef,length(point))
     for i = 1:length(point)
         weights[i] = piecewise_linear_weight(x[i],point[i])
     end
@@ -72,12 +103,12 @@ end
 
 function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S <: Integer, N}
 
-    data = zeros(size(bracketing_grid_points,1))
-    for i = 1:length(data)
-      data[i] = y[CartesianIndex(tuple(bracketing_grid_points[i,:]...))]
-    end
+  data = zeros(size(bracketing_grid_points,1))
+  for i = 1:length(data)
+    data[i] = y[CartesianIndex(tuple(bracketing_grid_points[i,:]...))]
+  end
 
-    return data
+  return data
 
 end
 
@@ -93,7 +124,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   for j = d:-1:1
 
-    new_data = zeros(Int(length(data)/2))
+    new_data = zeros(div(length(data),2))
     for i = 1:length(new_data)
       new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
@@ -146,42 +177,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
 end
 
-#=
-
-function locate_point_below(x::Array{T,1},point::T) where {T <: AbstractFloat}
-
-    if point <= x[1]
-        return 1
-    elseif point >= x[end]
-        return length(x) - 1
-    else
-        return sum(point .> x)
-    end
-
-end
-
-function piecewise_linear_evaluate(y::Array{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{T,Array{T,1}}) where {T <: AbstractFloat, N}
-
-    if length(x) == 1
-        x_below = locate_point_below(x[1],point[1])
-        x_above = x_below + 1
-        y_hat = y[x_below] + ((point[1] - x[1][x_below])/(x[1][x_above] - x[1][x_below]))*(y[x_above] - y[x_below])
-        return y_hat
-    else
-        x_below = locate_point_below(x[end],point[end])
-        x_above = x_below + 1
-        yy = zeros(size(y)[1:end-1])
-        for i in CartesianIndices(yy)
-            yy[i] = y[CartesianIndex(i,x_below)] + ((point[end] - x[end][x_below])/(x[end][x_above] - x[end][x_below]))*(y[CartesianIndex(i,x_above)] - y[CartesianIndex(i,x_below)])
-        end
-        x = x[1:end-1]
-        point = point[1:end-1]
-        piecewise_linear_evaluate(yy,x,point)
-    end
-
-end
-
-=#
+# Functions to handle the 1-D case
 
 function piecewise_linear_evaluate(y::Array{T,1},x::Array{T,1},point::T) where {T <: AbstractFloat}
 
@@ -206,36 +202,32 @@ function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1}) where {T <: 
 
 end
 
-@generated function grid_reshape(f::Array{T,N},grid::NTuple{N,Array{T,1}}) where {T,N}
+# Function to transform from one uniform grid to another
 
-    i_vars = Array{Symbol}(undef,N)
-    grid_vars = Array{String}(undef,N)
-    for i = 1:N
-      i_vars[i] = Symbol("i$i")
-      grid_vars[i] = "grid[$i][i$i]"
+function grid_reshape(f::Array{T,N},grid::NTuple{N,Array{T,1}}) where {T<:AbstractFloat,N}
+
+  #1. Construct the old grid
+    
+  old_grid = Array{Array{T,1},1}(undef,N)
+  for i = 1:N
+    piecewise_linear_nodes
+    old_grid[i] = piecewise_linear_nodes(size(f,i),[grid[i][end],grid[i][1]])
+  end
+
+  #2. Initialize the new y
+
+  y = Array{T,N}(undef,tuple(length.(grid)...))
+
+  #3. Interpolate to fill y
+
+  point = Array{T,1}(undef,N)
+  for i in CartesianIndices(y)
+    for j = 1:N
+      point[j] = grid[j][i[j]]
     end
+    y[i] = piecewise_linear_evaluate(f,old_grid,point)
+  end
 
-    inner = :(y[$(i_vars...)] = piecewise_linear_evaluate(f,old_grid,[$(Meta.parse.(grid_vars)...)]))
-
-    outer = inner
-
-    for i = N:-1:1
-        outer = :(
-        for $(i_vars[i]) = 1:length(grid[$i])
-            $outer
-         end
-        )
-    end
-
-    final = :(old_grid = Array{Array{T,1},1}(undef,N);
-             for i = 1:N;
-               old_grid[i] = [range(grid[i][1],grid[i][end],length=size(f,i));];
-             end;
-             y = Array{T,N}(undef,length.(grid));
-             $outer;
-             return y
-             )
-
-    return final
+  return y
 
 end

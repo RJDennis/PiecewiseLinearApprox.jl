@@ -5,7 +5,7 @@ Installation
 
 To install this package simply type in the REPL:
 
-```
+```julia
 using Pkg
 Pkg.add("PiecewiseLinearApprox")
 ```
@@ -15,7 +15,7 @@ Use
 
 The package performs piecewise linear interpolation over an arbitrary number of dimensions.  There are only two functions that need mentioning.  The first function computes a set of nodes spaced uniformly over a specified domain for a variable.
 
-```
+```julia
 nodes = piecewise_linear_nodes(n,domain)
 ```
 
@@ -23,7 +23,7 @@ where `n` is an integer representing the desired number of nodes and `domain` is
 
 To evaluate the piecewise linear approximation at an arbitrary point in the domain we use the command
 
-```
+```julia
 y_hat = piecewise_linear_evaluate(y,nodes,point)
 ```
 

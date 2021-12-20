@@ -44,7 +44,7 @@ end
 
 const linear_nodes = piecewise_linear_nodes
 
-function bracket_nodes(x::Array{T,1},point::T) where {T <: AbstractFloat}
+function bracket_nodes(x::Array{T,1},point::R) where {T <: AbstractFloat,R<:Number}
 
   if point <= x[1]
     return (1,2)
@@ -64,7 +64,7 @@ function bracket_nodes(x::Array{T,1},point::T) where {T <: AbstractFloat}
 
 end
  
-function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{T,1}) where {T <: AbstractFloat, N}
+function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{R,1}) where {T <: AbstractFloat, N,R<:Number}
 
   bracketing_nodes = Array{Int64,2}(undef,2,length(point))
   for i = 1:length(point)
@@ -75,7 +75,7 @@ function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point:
 
 end
 
-function piecewise_linear_weight(x::Array{T,1},point::T) where {T <: AbstractFloat}
+function piecewise_linear_weight(x::Array{T,1},point::R) where {T<:AbstractFloat,R<:Number}
 
     bracketing_nodes = bracket_nodes(x,point)
     weight = (point-x[bracketing_nodes[1]])/(x[bracketing_nodes[2]]-x[bracketing_nodes[1]])
@@ -84,9 +84,9 @@ function piecewise_linear_weight(x::Array{T,1},point::T) where {T <: AbstractFlo
 
 end
 
-function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{T,1}) where {T <: AbstractFloat, N}
+function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{R,1}) where {T<:AbstractFloat,N,R<:Number}
 
-    weights = Array{T,1}(undef,length(point))
+    weights = Array{R,1}(undef,length(point))
     for i = 1:length(point)
         weights[i] = piecewise_linear_weight(x[i],point[i])
     end
@@ -121,7 +121,7 @@ function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Arra
 
 end
 
-function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{T,Array{T,1}}) where {T <: AbstractFloat, N}
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,Array{R,1}}) where {T<:AbstractFloat,N,R<:Number}
 
   b = bracket_nodes(x,point)
   w = piecewise_linear_weights(x,point)
@@ -148,7 +148,7 @@ end
 
 function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}}) where {T <: AbstractFloat, N}
 
-  function approximating_function(point::Union{T,Array{T,1}}) where {T <: AbstractFloat}
+  function approximating_function(point::Union{R,Array{R,1}}) where {R<:Number}
 
     return piecewise_linear_evaluate(y,x,point)
 
@@ -158,7 +158,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
 end
 
-function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{T,Array{T,1}},integrals::Union{T,Array{T,1}}) where {T <: AbstractFloat, N}
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,Array{R,1}},integrals::Union{T,Array{T,1}}) where {T<:AbstractFloat,N,R<:Number}
 
   # This function is only needed to facilitate compatibility with SolveDSGE
 
@@ -188,7 +188,7 @@ end
 
 # Functions to handle the 1-D case
 
-function piecewise_linear_evaluate(y::Array{T,1},x::Array{T,1},point::T) where {T <: AbstractFloat}
+function piecewise_linear_evaluate(y::Array{T,1},x::Array{T,1},point::R) where {T<:AbstractFloat,R<:Number}
 
     b = bracket_nodes(x,point)
     w = piecewise_linear_weight(x,point)
@@ -201,7 +201,7 @@ end
 
 function piecewise_linear_evaluate(y::Array{T,1},nodes::Array{T,1}) where {T <: AbstractFloat}
 
-  function approximating_function(point::T) where {T <: AbstractFloat}
+  function approximating_function(point::R) where {R<:Number}
 
       return piecewise_linear_evaluate(y,nodes,point)
 
@@ -213,7 +213,7 @@ end
 
 # Function to transform from one uniform grid to another
 
-function grid_reshape(f::Array{T,N},grid::NTuple{N,Array{T,1}}) where {T<:AbstractFloat,N}
+function grid_reshape(f::AbstractArray{T,N},grid::NTuple{N,Array{T,1}}) where {T<:AbstractFloat,N}
 
   #1. Construct the old grid
     

@@ -133,7 +133,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   for j = d:-1:1
 
-    new_data = zeros(div(length(data),2))
+    new_data = zeros(R,div(length(data),2))
     for i = 1:length(new_data)
       new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end

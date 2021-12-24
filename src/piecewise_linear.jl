@@ -46,14 +46,14 @@ const linear_nodes = piecewise_linear_nodes
 
 function bracket_nodes(x::Array{T,1},point::R) where {T <: AbstractFloat,R<:Number}
 
-  if point <= x[1]
+  if real(point) <= x[1] # Real is used because complex numbers are occasionally used in NLboxsolve.jl
     return (1,2)
-  elseif point >= x[end]
+  elseif real(point) >= x[end]
     return (length(x) - 1, length(x))
   else
     y = 0
     for i in x
-      if i < point
+      if i < real(point)
         y += 1
       else
         break

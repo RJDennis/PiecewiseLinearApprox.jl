@@ -78,6 +78,7 @@ end
 function piecewise_linear_weight(x::Array{T,1},point::R) where {T<:AbstractFloat,R<:Number}
 
     bracketing_nodes = bracket_nodes(x,point)
+
     weight = (point-x[bracketing_nodes[1]])/(x[bracketing_nodes[2]]-x[bracketing_nodes[1]])
 
     return weight
@@ -121,7 +122,7 @@ function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Arra
 
 end
 
-function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,Array{R,1}}) where {T<:AbstractFloat,N,R<:Number}
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}}) where {T<:AbstractFloat,N,R<:Number}
 
   b = bracket_nodes(x,point)
   w = piecewise_linear_weights(x,point)
@@ -158,7 +159,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
 end
 
-function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,Array{R,1}},integrals::Union{T,Array{T,1}}) where {T<:AbstractFloat,N,R<:Number}
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},integrals::Union{T,Array{T,1}}) where {T<:AbstractFloat,N,R<:Number}
 
   # This function is only needed to facilitate compatibility with SolveDSGE
 

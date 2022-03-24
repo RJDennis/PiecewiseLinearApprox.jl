@@ -64,7 +64,7 @@ function bracket_nodes(x::Array{T,1},point::R) where {T <: AbstractFloat,R<:Numb
 
 end
  
-function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{R,1}) where {T <: AbstractFloat, N,R<:Number}
+function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::AbstractArray{R,1}) where {T <: AbstractFloat, N,R<:Number}
 
   bracketing_nodes = Array{Int64,2}(undef,2,length(point))
   for i = 1:length(point)
@@ -85,7 +85,7 @@ function piecewise_linear_weight(x::Array{T,1},point::R) where {T<:AbstractFloat
 
 end
 
-function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Array{R,1}) where {T<:AbstractFloat,N,R<:Number}
+function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::AbstractArray{R,1}) where {T<:AbstractFloat,N,R<:Number}
 
     weights = Array{R,1}(undef,length(point))
     for i = 1:length(point)

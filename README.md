@@ -30,3 +30,10 @@ y_hat = piecewise_linear_evaluate(y,nodes,point)
 where `y` is a multidimensional array, `nodes` is a tuple of 1D-arrays or an array of 1D-arrays, and `point` is a 1D array.
 
 If `point` resides outside the domain in any dimension, then linear extrapolation in that dimension is performed.
+
+Related packages
+----------------
+
+- ChebyshevApprox.jl
+- SmolyakApprox.jl
+- HyperbolicCrossApprox.jl

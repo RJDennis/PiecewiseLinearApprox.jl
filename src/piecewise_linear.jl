@@ -67,7 +67,7 @@ end
 function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::AbstractArray{R,1}) where {T <: AbstractFloat, N,R<:Number}
 
   bracketing_nodes = Array{Int64,2}(undef,2,length(point))
-  for i = 1:length(point)
+  for i in eachindex(point)
     bracketing_nodes[:,i] .= bracket_nodes(x[i],point[i])
   end
 
@@ -88,7 +88,7 @@ end
 function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::AbstractArray{R,1}) where {T<:AbstractFloat,N,R<:Number}
 
     weights = Array{R,1}(undef,length(point))
-    for i = 1:length(point)
+    for i in eachindex(point)
         weights[i] = piecewise_linear_weight(x[i],point[i])
     end
 
@@ -114,7 +114,7 @@ end
 function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S <: Integer, N}
 
   data = zeros(size(bracketing_grid_points,1))
-  for i = 1:length(data)
+  for i in eachindex(data)
     data[i] = y[CartesianIndex(tuple(bracketing_grid_points[i,:]...))]
   end
 
@@ -135,7 +135,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   for j = d:-1:1
 
     new_data = zeros(R,div(length(data),2))
-    for i = 1:length(new_data)
+    for i in eachindex(new_data)
       new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
 
@@ -175,7 +175,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   for j = d:-1:1
 
     new_data = zeros(R,Int(length(data)/2))
-    for i = 1:length(new_data)
+    for i in eachindex(new_data)
       new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
 

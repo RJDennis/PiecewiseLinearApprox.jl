@@ -22,29 +22,19 @@ end
 
 const linear_nodes = piecewise_linear_nodes
 
-function bracket_nodes(x::Array{T,1},point::R) where {T <: AbstractFloat, R <: Number}
+function bracket_nodes(x::AbstractVector{T}, point::R) where {T<:AbstractFloat, R<:Number}
 
-  n = length(x)
+    realpoint = real(point) # Real is used because complex numbers are occasionally used in NLboxsolve.jl
+    n = length(x)
 
-  if real(point) <= x[1] # Real is used because complex numbers are occasionally used in NLboxsolve.jl
-    return (1,2)
-  elseif real(point) >= x[end]
-    return (n-1,n)
-  else
-    y = 0
-    for i in x
-      if i < real(point)
-        y += 1
-      else
-        break
-      end
-    end
-    return (y,y+1)
-  end
+    realpoint <= x[1]   && return (1,2)
+    realpoint >= x[n] && return (n-1,n)
+    y = searchsortedlast(x, realpoint) 
+    return (y, y+1)
 
 end
 
-function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::AbstractArray{R,1}) where {T <: AbstractFloat, R<:Number, N}
+function bracket_nodes(x::Union{NTuple{d,Array{T,1}},Array{Array{T,1},1}},point::AbstractVector{R}) where {T <: AbstractFloat, R <: Number, d}
 
   bracketing_nodes = Array{Int64,2}(undef,2,length(point))
 
@@ -56,7 +46,7 @@ function bracket_nodes(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point:
 
 end
 
-function piecewise_linear_weight(x::Array{T,1},point::R) where {T<:AbstractFloat,R<:Number}
+function piecewise_linear_weight(x::AbstractVector{T},point::R) where {T<:AbstractFloat,R<:Number}
 
     bracketing_nodes = bracket_nodes(x,point)
 
@@ -66,12 +56,32 @@ function piecewise_linear_weight(x::Array{T,1},point::R) where {T<:AbstractFloat
 
 end
 
-function piecewise_linear_weights(x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::AbstractArray{R,1}) where {T <: AbstractFloat, R <: Number, N}
+function piecewise_linear_weight(x::AbstractVector{T}, point::R, brackets::AbstractVector{S}) where {T <: AbstractFloat, R <: Number, S <: Integer}
+
+    w = (point - x[brackets[2]]) / (x[brackets[1]] - x[brackets[2]])
+
+    return w
+
+end
+
+function piecewise_linear_weights(x::Union{NTuple{d,Array{T,1}},Array{Array{T,1},1}},point::AbstractVector{R}) where {T <: AbstractFloat, R <: Number, d}
 
     weights = Array{R,1}(undef,length(point))
 
     @inbounds for i in eachindex(point)
         weights[i] = piecewise_linear_weight(x[i],point[i])
+    end
+
+    return weights
+
+end
+
+function piecewise_linear_weights(x::Union{NTuple{d,Array{T,1}},Array{Array{T,1},1}},point::AbstractVector{R},brackets::AbstractMatrix{S}) where {T <: AbstractFloat, R <: Number, S <: Integer, d}
+
+    weights = Array{R,1}(undef,length(point))
+
+    @inbounds for i in eachindex(point)
+        weights[i] = piecewise_linear_weight(x[i],point[i],brackets[:,i])
     end
 
     return weights
@@ -85,53 +95,28 @@ function select_bracketing_nodes(bounds::Array{S,2}) where {S <: Integer}
   bracketing_grid_points = Array{S,2}(undef,2^d,d)
 
   @inbounds for i = 1:d
-    bracketing_grid_points[:,i] .= repeat(repeat(bounds[:,i],inner = 2^(d-i)),inner = 2^(i-1))
+    @views bracketing_grid_points[:,i] .= repeat(repeat(bounds[:,i],inner = 2^(d-i)),inner = 2^(i-1))
   end
 
   return bracketing_grid_points
 
 end
 
-function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S <: Integer, N}
+function select_relevant_data(y::AbstractArray{T,d}, bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S<: Integer, d}
 
-  data = zeros(2^N)
-  @inbounds for i in eachindex(data)
-    data[i] = y[CartesianIndex(Tuple(bracketing_grid_points[i,:]))]
-  end
+    data = Vector{T}(undef, 2^d)
+    @inbounds for i in eachindex(data)
+        data[i] = y[CartesianIndex(ntuple(j -> bracketing_grid_points[i,j], d))]
+    end
 
-  return data
+    return data
 
 end
 
 function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}}) where {T <: AbstractFloat, R <: Number, N}
 
   b = bracket_nodes(x,point)
-  w = piecewise_linear_weights(x,point)
-
-  d = size(b,2)
-
-  relevant_points = select_bracketing_nodes(b)
-  data = select_relevant_data(y,relevant_points)
-
-  for j = d:-1:1
-
-    new_data = zeros(R,div(length(data),2))
-    for i in eachindex(new_data)
-      new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
-    end
-
-    data = copy(new_data)
-
-  end
-
-  return data[1]
-
-end
-
-function piecewise_linear_evaluate2(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}}) where {T <: AbstractFloat, R <: Number, N}
-
-  b = bracket_nodes(x,point)
-  w = piecewise_linear_weights(x,point)
+  w = piecewise_linear_weights(x,point,b)
 
   d = size(b,2)
 
@@ -169,7 +154,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   # This function is only needed to facilitate compatibility with SolveDSGE
 
   b = bracket_nodes(x,point)
-  w = piecewise_linear_weights(x,point)
+  w = piecewise_linear_weights(x,point,b)
   #w = w.*integrals
 
   d = size(b,2)
@@ -196,7 +181,7 @@ end
 function piecewise_linear_evaluate(y::Array{T,1},x::Array{T,1},point::R) where {T <: AbstractFloat,R <: Number}
 
     b = bracket_nodes(x,point)
-    w = piecewise_linear_weight(x,point)
+    w = piecewise_linear_weight(x,point,b)
 
     y_estimate = y[b[1]] + w*(y[b[2]]-y[b[1]])
 
@@ -247,7 +232,7 @@ end
 
 function piecewise_linear_derivative(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},pos::S) where {S <: Integer, T <: AbstractFloat, R <: Number, N}
 
-  h = 1e-1
+  h = 1e-2
 
   point_upper = copy(point)
   point_lower = copy(point)
@@ -268,7 +253,7 @@ function piecewise_linear_derivative(y::AbstractArray{T,N},x::Union{NTuple{N,Arr
 
   # This function is only needed to facilitate compatibility with SolveDSGE
   
-  h = 1e-1
+  h = 1e-2
 
   point_upper = copy(point)
   point_lower = copy(point)

@@ -1,3 +1,21 @@
+"""
+piecewise_linear_nodes(n, domain = [1.0, -1.0])
+
+Generate `n` evenly-spaced nodes over `domain`.
+
+# Arguments
+- `n::Integer`: number of nodes; must be positive.
+- `domain`: two-element vector `[ub, lb]` defining the interval.
+
+# Returns
+A `Vector` of `n` node locations sorted from smallest to largest.
+
+# Examples
+```julia
+piecewise_linear_nodes(5)          # [-1.0, -0.5, 0.0, 0.5, 1.0]
+piecewise_linear_nodes(3, [0.0, 1.0])  # [0.0, 0.5, 1.0]
+```
+"""
 function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
 
   if n <= 0
@@ -20,6 +38,11 @@ function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
 
 end
 
+"""
+linear_nodes(n, domain = [1.0, -1.0])
+
+Alias for [`piecewise_linear_nodes`](@ref).
+"""
 const linear_nodes = piecewise_linear_nodes
 
 function bracket_nodes(x::AbstractVector{T}, point::R) where {T<:AbstractFloat, R<:Number}
@@ -113,6 +136,39 @@ function select_relevant_data(y::AbstractArray{T,d}, bracketing_grid_points::Arr
 
 end
 
+"""
+piecewise_linear_evaluate(y, x, point)
+piecewise_linear_evaluate(y, x)
+
+Evaluate a piecewise linear interpolant defined by function values `y` on grid
+`x` at `point`.  The multi-dimensional interpolant is constructed by successive linear
+interpolation (multilinear interpolation) along each dimension.
+
+# Arguments
+- `y`: array of function values on the grid. For an N-dimensional problem `y`
+  is an N-dimensional array whose size along dimension `i` equals
+  `length(x[i])`.
+- `x`: grid nodes — either an `NTuple` or a `Vector` of 1-D node vectors, one
+  per dimension. Use [`piecewise_linear_nodes`](@ref) to generate them.
+- `point`: the query location — a scalar (1-D) or a vector of length N (N-D).
+
+When called with only `y` and `x`, returns a closure `f(point)` that evaluates
+the interpolant at any `point`.
+
+# Returns
+The interpolated scalar value at `point`, or a callable when `point` is
+omitted.
+
+# Examples
+```julia
+x = piecewise_linear_nodes(5)
+y = sin.(x)
+piecewise_linear_evaluate(y, x, 0.3)   # interpolated sin(0.3)
+
+f = piecewise_linear_evaluate(y, x)
+f(0.3)                                  # same result via closure
+```
+"""
 function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}}) where {T <: AbstractFloat, R <: Number, N}
 
   b = bracket_nodes(x,point)
@@ -230,6 +286,35 @@ function grid_reshape(f::AbstractArray{T,N},grid::NTuple{N,Array{T,1}}) where {T
 
 end
 
+"""
+piecewise_linear_derivative(y, x, point, pos)
+
+Compute the partial derivative of a piecewise linear interpolant with respect
+to dimension `pos` at `point` using a central finite difference.
+
+The derivative is approximated as
+
+    (f(point + h·eₚₒₛ) - f(point - h·eₚₒₛ)) / (2h)
+
+with `h = 1e-2`, where `eₚₒₛ` is the unit vector along dimension `pos`.
+
+# Arguments
+- `y`: N-dimensional array of function values on the grid.
+- `x`: grid nodes — `NTuple` or `Vector` of 1-D node vectors.
+- `point`: query location as a vector of length N.
+- `pos::Integer`: index of the dimension to differentiate with respect to.
+
+# Returns
+The scalar finite-difference approximation of the partial derivative.
+
+# Examples
+```julia
+x1 = piecewise_linear_nodes(10, [0.0, 1.0])
+x2 = piecewise_linear_nodes(10, [0.0, 1.0])
+y  = [sin(a + b) for a in x1, b in x2]
+piecewise_linear_derivative(y, [x1, x2], [0.5, 0.5], 1)  # ∂/∂x₁
+```
+"""
 function piecewise_linear_derivative(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},pos::S) where {S <: Integer, T <: AbstractFloat, R <: Number, N}
 
   h = 1e-2

@@ -179,7 +179,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   relevant_points = select_bracketing_nodes(b)
   data = select_relevant_data(y,relevant_points)
 
-  for j = d:-1:1
+  @inbounds for j = d:-1:1
 
     new_data = zeros(R,div(length(data),2))
     for i in eachindex(new_data)

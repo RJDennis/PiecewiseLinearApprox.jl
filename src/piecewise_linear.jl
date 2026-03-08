@@ -81,7 +81,7 @@ end
 
 function piecewise_linear_weight(x::AbstractVector{T}, point::R, brackets::AbstractVector{S}) where {T <: AbstractFloat, R <: Number, S <: Integer}
 
-    w = (point - x[brackets[2]]) / (x[brackets[1]] - x[brackets[2]])
+    w = (point - x[brackets[1]]) / (x[brackets[2]] - x[brackets[1]])
 
     return w
 
@@ -179,13 +179,14 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   relevant_points = select_bracketing_nodes(b)
   data = select_relevant_data(y,relevant_points)
 
-  @inbounds for j = d:-1:1
+  for j = d:-1:1
 
-    @inbounds for i in 1:div(2^j,2)
-      data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
+    new_data = zeros(R,div(length(data),2))
+    for i in eachindex(new_data)
+      new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
 
-    data = @view data[1:div(2^j,2)]
+    data = copy(new_data)
 
   end
 

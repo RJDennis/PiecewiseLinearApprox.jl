@@ -50,10 +50,10 @@ function bracket_nodes(x::AbstractVector{T}, point::R) where {T<:AbstractFloat, 
     realpoint = real(point) # Real is used because complex numbers are occasionally used in NLboxsolve.jl
     n = length(x)
 
-    realpoint <= x[1]   && return (1,2)
+    realpoint <= x[1] && return (1,2)
     realpoint >= x[n] && return (n-1,n)
-    y = searchsortedlast(x, realpoint) 
-    return (y, y+1)
+    y = sum(realpoint .> x)
+    return (y,y+1)
 
 end
 
@@ -125,6 +125,17 @@ function select_bracketing_nodes(bounds::Array{S,2}) where {S <: Integer}
 
 end
 
+#function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S <: Integer, N}
+
+#  data = zeros(2^N)
+#  @inbounds for i in eachindex(data)
+#    data[i] = y[CartesianIndex(Tuple(bracketing_grid_points[i,:]))]
+#  end
+
+#  return data
+
+#end
+
 function select_relevant_data(y::AbstractArray{T,d}, bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S<: Integer, d}
 
     data = Vector{T}(undef, 2^d)
@@ -179,7 +190,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
   relevant_points = select_bracketing_nodes(b)
   data = select_relevant_data(y,relevant_points)
 
-  @inbounds for j = d:-1:1
+  for j = d:-1:1
 
     new_data = zeros(R,div(length(data),2))
     for i in eachindex(new_data)
@@ -206,26 +217,27 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
 end
 
-function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},integrals::Union{T,Array{T,1}}) where {T <: AbstractFloat, R <: Number, N}
+function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},integrals::Union{T,Array{T,1}}) where {T<:AbstractFloat,N,R<:Number}
 
   # This function is only needed to facilitate compatibility with SolveDSGE
 
   b = bracket_nodes(x,point)
   w = piecewise_linear_weights(x,point,b)
-  #w = w.*integrals
+  w .= w.*integrals
 
   d = size(b,2)
 
   relevant_points = select_bracketing_nodes(b)
   data = select_relevant_data(y,relevant_points)
 
-  @inbounds for j = d:-1:1
+  for j = d:-1:1
 
-    for i in 1:div(2^j,2)
-      data[i] = data[2*(i-1)+1] + w[j]*integrals[j]*(data[2*i]-data[2*(i-1)+1])
+    new_data = zeros(R,Int(length(data)/2))
+    for i in eachindex(new_data)
+      new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
 
-    data = @view data[1:div(2^j,2)]
+    data = copy(new_data)
 
   end
 

@@ -22,19 +22,11 @@ function piecewise_linear_nodes(n::S,domain = [1.0,-1.0]) where {S <: Integer}
     error("The number of nodes must be positive.")
   end
 
-  nodes = [(domain[1]+domain[2])/2.0 for _ in 1:n]
-
-  if isodd(n)
-    inc = (domain[1]-domain[2])/(n-1)
-  else
-    inc = (domain[1]-domain[2])/n
-  end
-  @inbounds for i = 1:div(n,2)
-    nodes[i]     += (i-1-div(n,2))*inc
-    nodes[n-i+1] -= (i-1-div(n,2))*inc
+  if n == 1
+    return [(domain[1]+domain[2])/2]
   end
 
-  return nodes
+  return collect(range(domain[2],domain[1],length = n))
 
 end
 
@@ -50,10 +42,12 @@ function bracket_nodes(x::AbstractVector{T}, point::R) where {T<:AbstractFloat, 
     realpoint = real(point) # Real is used because complex numbers are occasionally used in NLboxsolve.jl
     n = length(x)
 
+    n < 2 && error("Bracketing needs at least two nodes.")
+
     realpoint <= x[1] && return (1,2)
     realpoint >= x[n] && return (n-1,n)
-    y = sum(realpoint .> x)
-    return (y,y+1)
+    i = searchsortedlast(x,realpoint)
+    return (i,i+1)
 
 end
 
@@ -79,7 +73,7 @@ function piecewise_linear_weight(x::AbstractVector{T},point::R) where {T<:Abstra
 
 end
 
-function piecewise_linear_weight(x::AbstractVector{T}, point::R, brackets::AbstractVector{S}) where {T <: AbstractFloat, R <: Number, S <: Integer}
+function piecewise_linear_weight(x::AbstractVector{T}, point::R, brackets::Union{AbstractVector{S},NTuple{2,S}}) where {T <: AbstractFloat, R <: Number, S <: Integer}
 
     w = (point - x[brackets[1]]) / (x[brackets[2]] - x[brackets[1]])
 
@@ -118,23 +112,12 @@ function select_bracketing_nodes(bounds::Array{S,2}) where {S <: Integer}
   bracketing_grid_points = Array{S,2}(undef,2^d,d)
 
   @inbounds for i = 1:d
-    @views bracketing_grid_points[:,i] .= repeat(repeat(bounds[:,i],inner = 2^(d-i)),inner = 2^(i-1))
+    @views bracketing_grid_points[:,i] .= repeat(repeat(bounds[:,i],inner = 2^(d-i)),outer = 2^(i-1))
   end
 
   return bracketing_grid_points
 
 end
-
-#function select_relevant_data(y::AbstractArray{T,N},bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S <: Integer, N}
-
-#  data = zeros(2^N)
-#  @inbounds for i in eachindex(data)
-#    data[i] = y[CartesianIndex(Tuple(bracketing_grid_points[i,:]))]
-#  end
-
-#  return data
-
-#end
 
 function select_relevant_data(y::AbstractArray{T,d}, bracketing_grid_points::Array{S,2}) where {T <: AbstractFloat, S<: Integer, d}
 
@@ -166,6 +149,9 @@ interpolation (multilinear interpolation) along each dimension.
 When called with only `y` and `x`, returns a closure `f(point)` that evaluates
 the interpolant at any `point`.
 
+Points outside the grid are extrapolated linearly from the nearest cell rather
+than clamped.
+
 # Returns
 The interpolated scalar value at `point`, or a callable when `point` is
 omitted.
@@ -182,6 +168,11 @@ f(0.3)                                  # same result via closure
 """
 function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}}) where {T <: AbstractFloat, R <: Number, N}
 
+  length(x) == N || error("There are $(length(x)) node vectors for a $N-dimensional array of function values.")
+  @inbounds for i = 1:N
+    size(y,i) == length(x[i]) || error("Dimension $i of the function values has length $(size(y,i)) but there are $(length(x[i])) nodes.")
+  end
+
   b = bracket_nodes(x,point)
   w = piecewise_linear_weights(x,point,b)
 
@@ -197,7 +188,7 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
       new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
 
-    data = copy(new_data)
+    data = new_data   # new_data is freshly allocated each pass; the copy was redundant
 
   end
 
@@ -232,12 +223,12 @@ function piecewise_linear_evaluate(y::AbstractArray{T,N},x::Union{NTuple{N,Array
 
   for j = d:-1:1
 
-    new_data = zeros(R,Int(length(data)/2))
+    new_data = zeros(R,div(length(data),2))
     for i in eachindex(new_data)
       new_data[i] = data[2*(i-1)+1] + w[j]*(data[2*i]-data[2*(i-1)+1])
     end
 
-    data = copy(new_data)
+    data = new_data
 
   end
 
@@ -275,7 +266,7 @@ end
 function grid_reshape(f::AbstractArray{T,N},grid::NTuple{N,Array{T,1}}) where {T <: AbstractFloat, N}
 
   #1. Construct the old grid
-    
+
   old_grid = Array{Array{T,1},1}(undef,N)
   @inbounds for i = 1:N
     old_grid[i] = piecewise_linear_nodes(size(f,i),[grid[i][end],grid[i][1]])
@@ -305,11 +296,15 @@ piecewise_linear_derivative(y, x, point, pos)
 Compute the partial derivative of a piecewise linear interpolant with respect
 to dimension `pos` at `point` using a central finite difference.
 
-The derivative is approximated as
+The interpolant is linear in each coordinate inside a cell, so the partial
+derivative is obtained EXACTLY as the slope across the bracketing cell in
+dimension `pos`.  A previous version used a central difference with a fixed
+absolute step of 1e-2, which straddles cells whenever the grid is finer than
+that -- returning a smeared value rather than the interpolant's own slope --
+and which ignored the scale of the domain.
 
-    (f(point + h·eₚₒₛ) - f(point - h·eₚₒₛ)) / (2h)
-
-with `h = 1e-2`, where `eₚₒₛ` is the unit vector along dimension `pos`.
+At a cell boundary the derivative of a piecewise linear function is not
+defined; the slope of the cell to the right is returned.
 
 # Arguments
 - `y`: N-dimensional array of function values on the grid.
@@ -330,18 +325,18 @@ piecewise_linear_derivative(y, [x1, x2], [0.5, 0.5], 1)  # ∂/∂x₁
 """
 function piecewise_linear_derivative(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},pos::S) where {S <: Integer, T <: AbstractFloat, R <: Number, N}
 
-  h = 1e-2
+  lower, upper = bracket_nodes(x[pos],point[pos])
 
   point_upper = copy(point)
   point_lower = copy(point)
 
-  point_upper[pos] += h
-  point_lower[pos] -= h
+  point_upper[pos] = x[pos][upper]
+  point_lower[pos] = x[pos][lower]
 
   y_estimate_upper = piecewise_linear_evaluate(y,x,point_upper)
   y_estimate_lower = piecewise_linear_evaluate(y,x,point_lower)
 
-  deriv = (y_estimate_upper -  y_estimate_lower)/(2*h)
+  deriv = (y_estimate_upper - y_estimate_lower)/(x[pos][upper] - x[pos][lower])
 
   return deriv
 
@@ -350,19 +345,19 @@ end
 function piecewise_linear_derivative(y::AbstractArray{T,N},x::Union{NTuple{N,Array{T,1}},Array{Array{T,1},1}},point::Union{R,AbstractArray{R,1}},integrals::Union{T,Array{T,1}},pos::S) where {S <: Integer, T <: AbstractFloat, R <: Number, N}
 
   # This function is only needed to facilitate compatibility with SolveDSGE
-  
-  h = 1e-2
+
+  lower, upper = bracket_nodes(x[pos],point[pos])
 
   point_upper = copy(point)
   point_lower = copy(point)
 
-  point_upper[pos] += h
-  point_lower[pos] -= h
+  point_upper[pos] = x[pos][upper]
+  point_lower[pos] = x[pos][lower]
 
   y_estimate_upper = piecewise_linear_evaluate(y,x,point_upper,integrals)
   y_estimate_lower = piecewise_linear_evaluate(y,x,point_lower,integrals)
 
-  deriv = (y_estimate_upper -  y_estimate_lower)/(2*h)
+  deriv = (y_estimate_upper - y_estimate_lower)/(x[pos][upper] - x[pos][lower])
 
   return deriv
 
